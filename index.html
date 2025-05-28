@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Custo de Combustível</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-lg">
+        <header class="mb-6 text-center">
+            <h1 class="text-2xl sm:text-3xl font-bold text-indigo-700">Calculadora de Custo de Combustível</h1>
+            <p class="text-sm text-gray-600 mt-1">Estime o gasto com gasolina para sua próxima viagem.</p>
+        </header>
+
+        <form id="fuelForm" class="space-y-6">
+            <div>
+                <label for="distancia" class="input-label">
+                    Distância da Viagem (km)
+                    <div class="tooltip inline-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="info-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                        </svg>
+                        <span class="tooltiptext">Informe a distância total (ida e volta, se aplicável) que você planeja percorrer.</span>
+                    </div>
+                </label>
+                <input type="number" id="distancia" name="distancia" class="input-field" placeholder="Ex: 350" required min="0.1" step="any">
+            </div>
+
+            <div>
+                <label for="carSelect" class="input-label">Selecione um Veículo (Opcional):</label>
+                <select id="carSelect" class="input-field">
+                    <option value="">-- Escolha um carro para ver sugestões de consumo --</option>
+                    </select>
+                <div id="consumptionOptions" class="mt-2 text-sm space-y-1">
+                    </div>
+            </div>
+
+            <div>
+                <label for="consumo" class="input-label">
+                    Consumo Médio do Veículo (km/L)
+                    <div class="tooltip inline-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="info-icon">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                        </svg>
+                        <span class="tooltiptext">Quantos quilômetros seu carro faz com 1 litro. Selecione um veículo acima ou insira manualmente.</span>
+                    </div>
+                </label>
+                <input type="number" id="consumo" name="consumo" class="input-field" placeholder="Ex: 12.5" required min="0.1" step="any">
+            </div>
+
+            <div>
+                <label for="preco_gasolina" class="input-label">
+                    Preço do Combustível (R$/L)
+                     <div class="tooltip inline-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="info-icon">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                        </svg>
+                        <span class="tooltiptext">Informe o preço atual do litro do combustível que você vai usar.</span>
+                    </div>
+                </label>
+                <div class="flex items-center space-x-2 mt-1">
+                    <input type="number" id="preco_gasolina" name="preco_gasolina" class="input-field w-2/3" placeholder="Ex: 5.89" required min="0.01" step="0.01">
+                    <button type="button" id="obterPrecoLocalBtn" class="btn btn-secondary w-1/3 text-xs sm:text-sm">Sugerir Preço</button>
+                </div>
+                <p id="precoLocalMsg" class="text-xs text-gray-500 mt-1"></p>
+            </div>
+
+            <div>
+                <button type="submit" id="calcularBtn" class="btn btn-primary">Calcular Gasto</button>
+            </div>
+        </form>
+
+        <div id="resultado" class="mt-8 p-4 border border-indigo-200 rounded-lg bg-indigo-50 hidden">
+            <h2 class="text-xl font-semibold text-indigo-700 mb-3">Resultado Estimado:</h2>
+            <p class="text-gray-700"><strong class="font-medium">Litros necessários:</strong> <span id="litrosNecessarios" class="text-indigo-600 font-bold"></span></p>
+            <p class="text-gray-700 mt-1"><strong class="font-medium">Custo total estimado:</strong> <span id="custoTotal" class="text-indigo-600 font-bold text-lg"></span></p>
+            <p class="text-xs text-gray-500 mt-3">Lembre-se: este é um cálculo aproximado. O consumo real pode variar.</p>
+        </div>
+
+        <div id="errorModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center hidden z-50 p-4">
+            <div class="bg-white p-5 rounded-lg shadow-xl w-full max-w-sm">
+                <div class="text-center">
+                    <h3 id="errorModalTitle" class="text-lg leading-6 font-medium text-gray-900">Atenção</h3>
+                    <div class="mt-2 px-7 py-3">
+                        <p id="errorModalMessage" class="text-sm text-gray-500"></p>
+                    </div>
+                    <div class="items-center px-4 py-3">
+                        <button id="closeErrorModalBtn" class="px-4 py-2 bg-indigo-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                            Entendi
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
