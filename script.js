@@ -1,4 +1,4 @@
-// script.js (v0.4.0 - Google Maps API implementada)
+// Versão 0.2.3
 
 const carDatabase = [
     { display: "BYD Song Plus (Híbrido Plug-in)", G_comb_hibrido: 22.0, isFlex: false, isHybrid: true, isDiesel: false },
@@ -52,51 +52,12 @@ const carDatabase = [
     { display: "VW Taos (Comfortline 1.4 TSI AT)", G_cid: 10.9, G_est: 13.0, E_cid: 7.6, E_est: 9.1, isFlex: true, isHybrid: false, isDiesel: false },
     { display: "VW Virtus (Comfortline 1.0 TSI AT)", G_cid: 12.1, G_est: 14.7, E_cid: 8.2, E_est: 10.2, isFlex: true, isHybrid: false, isDiesel: false },
 ];
+// Ordenar carDatabase alfabeticamente pelo nome de exibição
 carDatabase.sort((a, b) => a.display.localeCompare(b.display));
 
-async function getRouteDistance(origin, dest) {
-    const apiKey = GOOGLE_API_KEY;// <--- SUBSTITUA PELA SUA CHAVE REAL
-
-    const encodedOrigin = encodeURIComponent(origin);
-    const encodedDest = encodeURIComponent(dest);
-    const apiUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodedOrigin}&destination=${encodedDest}&mode=driving&units=metric&language=pt-BR&key=${apiKey}`;
-
-    if (apiKey === "COLE_SUA_NOVA_E_SEGURA_CHAVE_AQUI" || apiKey === "") {
-        console.error("Chave de API do Google Maps não configurada.");
-        throw new Error("Chave de API do Google Maps não está configurada.");
-    }
-
-    try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            let errorMessage = `Erro da API de Mapas (${response.status}): ${errorData.error_message || errorData.status || response.statusText || 'Erro desconhecido'}`;
-            if (errorData.status === "REQUEST_DENIED") {
-                 errorMessage = "Chave de API inválida ou a API 'Directions' não está habilitada. Verifique suas configurações no Google Cloud Console.";
-            } else if (errorData.status === "ZERO_RESULTS") {
-                errorMessage = "Nenhuma rota encontrada entre as cidades. Verifique os nomes.";
-            }
-            throw new Error(errorMessage);
-        }
-
-        const data = await response.json();
-
-        if (data.status === "OK" && data.routes.length > 0 && data.routes[0].legs.length > 0) {
-            const distanceInMeters = data.routes[0].legs[0].distance.value;
-            const distanceInKm = (distanceInMeters / 1000).toFixed(1);
-            return parseFloat(distanceInKm);
-        } else {
-            throw new Error(data.error_message || `Não foi possível calcular a distância (${data.status}).`);
-        }
-    } catch (error) {
-        if (error instanceof Error) {
-            throw error;
-        }
-        throw new Error("Não foi possível obter a distância. Verifique sua conexão ou tente mais tarde.");
-    }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Lógica completa da v0.2.3 ---
+
     const fuelForm = document.getElementById('fuelForm');
     const distanciaInput = document.getElementById('distancia');
     const consumoInput = document.getElementById('consumo');
@@ -118,14 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyListDiv = document.getElementById('historyList');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     
-    const manualDistanceModeRadio = document.getElementById('manualDistanceMode');
-    const apiDistanceModeRadio = document.getElementById('apiDistanceMode');
-    const apiDistanceSection = document.getElementById('apiDistanceSection');
-    const originCityInput = document.getElementById('originCity');
-    const destinationCityInput = document.getElementById('destinationCity');
-    const calculateDistanceBtn = document.getElementById('calculateDistanceBtn');
-    const apiDistanceMsg = document.getElementById('apiDistanceMsg');
-
     const errorModal = document.getElementById('errorModal');
     const errorModalTitle = document.getElementById('errorModalTitle');
     const errorModalMessage = document.getElementById('errorModalMessage');
@@ -139,7 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
             errorModalMessage.textContent = message;
             errorModal.classList.remove('hidden');
         } else {
-            console.error("Elementos do modal de erro não encontrados! Título:", title, "Mensagem:", message);
             alert(title + "\n" + message); 
         }
     }
@@ -149,66 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(errorModal) errorModal.classList.add('hidden');
         });
     }
-    
-    function toggleDistanceMode() {
-        if (apiDistanceModeRadio && apiDistanceModeRadio.checked) {
-            if(apiDistanceSection) apiDistanceSection.classList.remove('hidden');
-            if(distanciaInput) {
-                distanciaInput.readOnly = true;
-                distanciaInput.classList.add('bg-gray-200');
-                distanciaInput.placeholder = "Calcule com a API de Mapas";
-            }
-            if(calculateDistanceBtn) calculateDistanceBtn.textContent = 'Calcular Distância';
-        } else { 
-            if(apiDistanceSection) apiDistanceSection.classList.add('hidden');
-            if(distanciaInput) {
-                distanciaInput.readOnly = false;
-                distanciaInput.classList.remove('bg-gray-200');
-                distanciaInput.placeholder = "Insira a distância";
-            }
-        }
-         if(apiDistanceMsg) apiDistanceMsg.textContent = ''; 
-    }
 
-    if (manualDistanceModeRadio) manualDistanceModeRadio.addEventListener('change', toggleDistanceMode);
-    if (apiDistanceModeRadio) apiDistanceModeRadio.addEventListener('change', toggleDistanceMode);
-    
-    toggleDistanceMode(); 
-
-    if (calculateDistanceBtn && originCityInput && destinationCityInput && distanciaInput && apiDistanceMsg) {
-        calculateDistanceBtn.addEventListener('click', async () => {
-            const origin = originCityInput.value;
-            const destination = destinationCityInput.value;
-            apiDistanceMsg.textContent = ''; 
-
-            if (!origin || !destination) {
-                showErrorModal('Campos Vazios', 'Informe a cidade de origem e destino.');
-                return;
-            }
-
-            calculateDistanceBtn.textContent = 'Calculando...';
-            calculateDistanceBtn.disabled = true;
-            apiDistanceMsg.textContent = 'Consultando API de Mapas... Por favor, aguarde.';
-            apiDistanceMsg.classList.remove('text-red-500', 'text-green-600');
-
-            try {
-                const distance = await getRouteDistance(origin, destination); 
-                distanciaInput.value = distance;
-                distanciaInput.classList.remove('bg-gray-200'); 
-                apiDistanceMsg.textContent = `Distância calculada: ${distance} km.`;
-                apiDistanceMsg.classList.add('text-green-600');
-            } catch (error) {
-                showErrorModal('Erro ao Calcular Distância', error.message); 
-                distanciaInput.value = ''; 
-                apiDistanceMsg.textContent = error.message;
-                apiDistanceMsg.classList.add('text-red-500');
-            } finally {
-                calculateDistanceBtn.textContent = 'Calcular Distância';
-                calculateDistanceBtn.disabled = false;
-            }
-        });
-    }
-    
     if (carSelect) {
         carDatabase.forEach((car) => { 
             const option = document.createElement('option');
@@ -218,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    if (saveMyCarBtn && myCarConsumptionInput && myCarStatus) {
+    if (saveMyCarBtn) {
         saveMyCarBtn.addEventListener('click', () => {
             const myConsumption = parseFloat(myCarConsumptionInput.value);
             if (!isNaN(myConsumption) && myConsumption > 0) {
@@ -231,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (loadMyCarBtn && consumoInput && myCarStatus) {
+    if (loadMyCarBtn) {
         loadMyCarBtn.addEventListener('click', () => {
             const savedConsumption = localStorage.getItem('myCarConsumption');
             if (savedConsumption) {
@@ -284,21 +177,17 @@ document.addEventListener('DOMContentLoaded', () => {
             addDetailedConsumptionButton('Diesel (Cidade)', carData.D_cid);
             addDetailedConsumptionButton('Diesel (Estrada)', carData.D_est);
         }
-        if (!hasDetailedOptions && !carData.isHybrid) consumptionOptionsDiv.innerHTML = '<p class="text-xs text-gray-500">Selecione um tipo de consumo.</p>';
-        else if (!hasDetailedOptions && carData.isHybrid && fuel === 'gasolina' && carData.G_comb_hibrido === undefined) {
-        } else if (!hasDetailedOptions && carData.isHybrid && !carData.G_comb_hibrido){
-             consumptionOptionsDiv.innerHTML = '<p class="text-xs text-gray-500">Dados de consumo híbrido não disponíveis.</p>';
-        }
+        if (!hasDetailedOptions) consumptionOptionsDiv.innerHTML = '<p class="text-xs text-gray-500">Dados de consumo não disponíveis.</p>';
     }
     
-    if (carSelect && consumptionOptionsDiv && fuelTypeSelectorDiv && consumoInput) {
+    if (carSelect) {
         carSelect.addEventListener('change', function() {
             consumptionOptionsDiv.innerHTML = '';
-            fuelTypeSelectorDiv.innerHTML = '';
+            if(fuelTypeSelectorDiv) fuelTypeSelectorDiv.innerHTML = '';
             const selectedCarDisplay = this.value; 
 
             if (selectedCarDisplay === "") {
-                consumoInput.value = '';
+                if(consumoInput) consumoInput.value = '';
                 updateFuelPriceLabel('gasolina');
                 return;
             }
@@ -369,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    if (obterPrecoLocalBtn && precoCombustivelInput && precoLocalMsg) {
+    if (obterPrecoLocalBtn) {
          obterPrecoLocalBtn.addEventListener('click', () => {
             precoLocalMsg.textContent = 'Tentando obter localização...';
             if (navigator.geolocation) {
@@ -402,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    if (fuelForm && distanciaInput && consumoInput && precoCombustivelInput && roundTripCheckbox && litrosNecessariosSpan && custoTotalSpan && resultadoDiv && apiDistanceModeRadio) {
+    if (fuelForm) {
         fuelForm.addEventListener('submit', (event) => {
             event.preventDefault();
             let distanciaOriginal = parseFloat(distanciaInput.value);
@@ -410,18 +299,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const consumo = parseFloat(consumoInput.value);
             const preco = parseFloat(precoCombustivelInput.value);
 
-            if (apiDistanceModeRadio.checked && (isNaN(distanciaOriginal) || distanciaOriginal <= 0)) {
-                 showErrorModal('Distância Inválida', 'Calcule a distância com a API de Mapas ou mude para o modo manual e insira um valor antes de calcular o gasto.');
-                 distanciaInput.focus();
-                 return;
-            }
-            if (!apiDistanceModeRadio.checked && (isNaN(distanciaOriginal) || distanciaOriginal <= 0)) {
+            if (isNaN(distanciaOriginal) || distanciaOriginal <= 0) {
                 showErrorModal('Distância Inválida', 'Por favor, insira uma distância válida.');
                 distanciaInput.focus();
                 return;
             }
 
-            if (roundTripCheckbox.checked) {
+            if (roundTripCheckbox && roundTripCheckbox.checked) {
                 distanciaCalculo *= 2;
             }
             
