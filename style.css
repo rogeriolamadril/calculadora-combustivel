@@ -1,7 +1,4 @@
-/* Estilo base da fonte já definido no HTML via Google Fonts e Tailwind body class */
-
-/* Estilos do Tailwind são aplicados prioritariamente. Este CSS é para o que não é coberto
-   ou para overrides específicos. */
+/* style.css (v0.2.3 - Sem modo escuro) */
 
 @tailwind base;
 @tailwind components;
@@ -34,7 +31,6 @@
     }
 }
 
-/* Estilos personalizados não cobertos pelo Tailwind ou que precisam de override */
 body {
     font-family: 'Inter', sans-serif;
 }
