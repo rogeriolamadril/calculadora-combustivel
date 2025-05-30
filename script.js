@@ -55,7 +55,7 @@ const carDatabase = [
 carDatabase.sort((a, b) => a.display.localeCompare(b.display));
 
 async function getRouteDistance(origin, dest) {
-    const apiKey = "AIzaSyDoAB4RWuf4qdux57m89-Xh7s62RJ1mS-I"; // <--- SUBSTITUA PELA SUA CHAVE REAL
+    const apiKey = GOOGLE_API_KEY;// <--- SUBSTITUA PELA SUA CHAVE REAL
 
     const encodedOrigin = encodeURIComponent(origin);
     const encodedDest = encodeURIComponent(dest);
