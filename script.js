@@ -1,8 +1,6 @@
-// Versão 0.2.3
+// script.js (v0.3.1 - com opção de modo de distância e API Gemini para estimativa)
 
 const carDatabase = [
-    // ... (a mesma lista de 50 carros com isFlex, isDiesel, etc. da v0.2.1, já ordenada) ...
-    // Exemplo (cole a lista completa da v0.2.1 aqui):
     { display: "BYD Song Plus (Híbrido Plug-in)", G_comb_hibrido: 22.0, isFlex: false, isHybrid: true, isDiesel: false },
     { display: "Caoa Chery Tiggo 5X Pro (1.5T Híbrido Leve AT)", G_cid: 11.3, G_est: 12.7, E_cid: 7.7, E_est: 8.9, isFlex: true, isHybrid: true, isDiesel: false },
     { display: "Caoa Chery Tiggo 7 Pro (Max Drive 1.6T AT)", G_cid: 9.9, G_est: 11.7, isFlex: false, isHybrid: false, isDiesel: false },
@@ -54,12 +52,62 @@ const carDatabase = [
     { display: "VW Taos (Comfortline 1.4 TSI AT)", G_cid: 10.9, G_est: 13.0, E_cid: 7.6, E_est: 9.1, isFlex: true, isHybrid: false, isDiesel: false },
     { display: "VW Virtus (Comfortline 1.0 TSI AT)", G_cid: 12.1, G_est: 14.7, E_cid: 8.2, E_est: 10.2, isFlex: true, isHybrid: false, isDiesel: false },
 ];
-
-// Ordenar carDatabase alfabeticamente pelo nome de exibição
 carDatabase.sort((a, b) => a.display.localeCompare(b.display));
 
 
+// Função para chamar a API Gemini e estimar a distância
+async function getAIDistance(origin, dest) {
+    // Monta a pergunta para a IA
+    const prompt = `Qual é a distância aproximada por estrada entre ${origin} e ${dest} em quilômetros? Responda APENAS com o número de quilômetros, sem texto adicional. Por exemplo: 450`;
+    
+    let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+    const payload = { contents: chatHistory };
+    // A apiKey é deixada em branco; o ambiente do Canvas a fornecerá em tempo de execução para gemini-2.0-flash.
+    const apiKey = "AIzaSyDELnt0UUetMR6h-nBh_A1Ifl4kFNWasT8"; 
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Erro da API Gemini:", errorData);
+            throw new Error(`Erro da API ao buscar distância: ${errorData.error?.message || response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (result.candidates && result.candidates.length > 0 &&
+            result.candidates[0].content && result.candidates[0].content.parts &&
+            result.candidates[0].content.parts.length > 0) {
+            
+            const textResponse = result.candidates[0].content.parts[0].text;
+            // Tenta extrair apenas números da resposta da IA
+            const distanceMatch = textResponse.match(/\d+/); 
+            if (distanceMatch && distanceMatch[0]) {
+                return parseInt(distanceMatch[0], 10);
+            } else {
+                console.warn("Resposta da IA não continha um número claro para a distância:", textResponse);
+                throw new Error("A IA não forneceu uma distância numérica clara. Tente novamente ou insira manualmente.");
+            }
+        } else {
+            console.error("Estrutura de resposta inesperada da API Gemini:", result);
+            throw new Error("Resposta inesperada da API da IA. Tente novamente ou insira manualmente.");
+        }
+    } catch (error) {
+        console.error("Falha ao chamar a API Gemini:", error);
+        // Retorna a mensagem de erro para ser exibida ao usuário
+        throw new Error(error.message || "Não foi possível obter a estimativa da IA. Verifique sua conexão ou tente mais tarde.");
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Elementos DOM
     const fuelForm = document.getElementById('fuelForm');
     const distanciaInput = document.getElementById('distancia');
     const consumoInput = document.getElementById('consumo');
@@ -80,7 +128,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const myCarStatus = document.getElementById('myCarStatus');
     const historyListDiv = document.getElementById('historyList');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-    // themeToggleBtn removido dos elementos DOM e da lógica
+    
+    const manualDistanceModeRadio = document.getElementById('manualDistanceMode');
+    const aiDistanceModeRadio = document.getElementById('aiDistanceMode');
+    const aiDistanceSection = document.getElementById('aiDistanceSection');
+    const originCityInput = document.getElementById('originCity');
+    const destinationCityInput = document.getElementById('destinationCity');
+    const calculateDistanceBtn = document.getElementById('calculateDistanceBtn');
+    const aiDistanceMsg = document.getElementById('aiDistanceMsg');
 
     const errorModal = document.getElementById('errorModal');
     const errorModalTitle = document.getElementById('errorModalTitle');
@@ -106,10 +161,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // --- Lógica do Dark Mode REMOVIDA ---
+    function toggleDistanceMode() {
+        if (aiDistanceModeRadio && aiDistanceModeRadio.checked) {
+            if(aiDistanceSection) aiDistanceSection.classList.remove('hidden');
+            if(distanciaInput) {
+                distanciaInput.readOnly = true;
+                distanciaInput.classList.add('bg-gray-200'); 
+                distanciaInput.placeholder = "Calcule com IA";
+                // Não limpar o valor aqui, pois pode ter sido preenchido pela IA
+            }
+        } else { 
+            if(aiDistanceSection) aiDistanceSection.classList.add('hidden');
+            if(distanciaInput) {
+                distanciaInput.readOnly = false;
+                distanciaInput.classList.remove('bg-gray-200');
+                distanciaInput.placeholder = "Insira a distância";
+            }
+        }
+         if(aiDistanceMsg) aiDistanceMsg.textContent = ''; 
+    }
+
+    if (manualDistanceModeRadio) manualDistanceModeRadio.addEventListener('change', toggleDistanceMode);
+    if (aiDistanceModeRadio) aiDistanceModeRadio.addEventListener('change', toggleDistanceMode);
     
-    // --- Popular Dropdown de Carros (ordenado) ---
-    // (Código igual ao da v0.2.1)
+    toggleDistanceMode(); 
+
+    if (calculateDistanceBtn && originCityInput && destinationCityInput && distanciaInput && aiDistanceMsg) {
+        calculateDistanceBtn.addEventListener('click', async () => {
+            const origin = originCityInput.value;
+            const destination = destinationCityInput.value;
+            aiDistanceMsg.textContent = ''; 
+
+            if (!origin || !destination) {
+                showErrorModal('Campos Vazios', 'Informe a cidade de origem e destino.');
+                return;
+            }
+
+            calculateDistanceBtn.textContent = 'Calculando...';
+            calculateDistanceBtn.disabled = true;
+            aiDistanceMsg.textContent = 'Consultando a IA... Por favor, aguarde.';
+            aiDistanceMsg.classList.remove('text-red-500', 'text-green-600');
+
+
+            try {
+                const distance = await getAIDistance(origin, destination); // Chamada à API Gemini
+                distanciaInput.value = distance;
+                distanciaInput.classList.remove('bg-gray-200'); 
+                aiDistanceMsg.textContent = `Distância estimada pela IA: ${distance} km.`;
+                aiDistanceMsg.classList.add('text-green-600');
+            } catch (error) {
+                showErrorModal('Estimativa da IA', error.message); // Mostrar a mensagem de erro da API
+                distanciaInput.value = ''; 
+                aiDistanceMsg.textContent = error.message;
+                aiDistanceMsg.classList.add('text-red-500');
+                // Manter o campo de distância bloqueado se a IA foi selecionada,
+                // o usuário pode mudar para o modo manual para editar.
+            } finally {
+                calculateDistanceBtn.textContent = 'Calcular Distância (IA)';
+                calculateDistanceBtn.disabled = false;
+            }
+        });
+    }
+    
     if (carSelect) {
         carDatabase.forEach((car) => { 
             const option = document.createElement('option');
@@ -119,43 +232,43 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // --- Salvar "Meu Carro" ---
-    // (Código igual ao da v0.2.1)
-    if (saveMyCarBtn && myCarConsumptionInput && myCarStatus) { /* ... */ }
-    if (loadMyCarBtn && consumoInput && myCarStatus) { /* ... */ }
-        
-    // --- Lógica de Seleção de Carro e Tipo de Combustível ---
-    // (Funções updateFuelPriceLabel, displayDetailedConsumptionOptions e listener do carSelect iguais à v0.2.1)
-    function updateFuelPriceLabel(fuelType) { /* ... (código da v0.2.1) ... */ }
-    function displayDetailedConsumptionOptions(carData, fuel) { /* ... (código da v0.2.1) ... */ }
+    if (saveMyCarBtn && myCarConsumptionInput && myCarStatus) { /* ... (código existente) ... */ }
+    if (loadMyCarBtn && consumoInput && myCarStatus) { /* ... (código existente) ... */ }
+    function updateFuelPriceLabel(fuelType) { /* ... (código existente) ... */ }
+    function displayDetailedConsumptionOptions(carData, fuel) { /* ... (código existente) ... */ }
     if (carSelect && consumptionOptionsDiv && fuelTypeSelectorDiv && consumoInput) {
-        carSelect.addEventListener('change', function() { /* ... (código da v0.2.1) ... */ });
+        carSelect.addEventListener('change', function() { /* ... (código existente) ... */ });
     }
     
-    // --- Histórico de Cálculos ---
-    // (Código igual ao da v0.2.1: MAX_HISTORY_ITEMS, calculationHistory, displayHistory, listener do clearHistoryBtn)
     const MAX_HISTORY_ITEMS = 5;
     let calculationHistory = JSON.parse(localStorage.getItem('calculationHistory')) || [];
-    function displayHistory() { /* ... (código da v0.2.1) ... */ }
-    if (clearHistoryBtn) { /* ... (código da v0.2.1) ... */ }
+    function displayHistory() { /* ... (código existente) ... */ }
+    if (clearHistoryBtn) { /* ... (código existente) ... */ }
     displayHistory(); 
     
-    // --- Lógica Principal do Formulário ---
-    // (Código igual ao da v0.2.1: listener do fuelForm, validações, cálculo, adição ao histórico)
-    if (fuelForm && distanciaInput && consumoInput && precoCombustivelInput && roundTripCheckbox && litrosNecessariosSpan && custoTotalSpan && resultadoDiv) {
-        fuelForm.addEventListener('submit', (event) => { /* ... (código da v0.2.1) ... */ });
+    if (fuelForm && distanciaInput && consumoInput && precoCombustivelInput && roundTripCheckbox && litrosNecessariosSpan && custoTotalSpan && resultadoDiv && aiDistanceModeRadio) {
+        fuelForm.addEventListener('submit', (event) => { /* ... (código existente, mas garanta que usa distanciaInput.value corretamente) ... */ });
     } else {
         console.error("Um ou mais elementos principais do formulário não foram encontrados ao tentar adicionar listener de submit.");
     }
+    
+    if (obterPrecoLocalBtn && precoCombustivelInput && precoLocalMsg) { /* ... (código existente) ... */ }
+    
+    displayHistory();
 
-    // Re-colando as funções que foram abreviadas com "/* ... (código da v0.2.1) ... */" para completude:
+
+    // --- COLAR CÓDIGOS ABREVIADOS AQUI ---
+    // Cole as definições completas das funções que foram abreviadas com "/* ... (código existente) ... */"
+    // showErrorModal já está definida
+    // getAIDistance já está definida
+
     if (saveMyCarBtn && myCarConsumptionInput && myCarStatus) {
         saveMyCarBtn.addEventListener('click', () => {
             const myConsumption = parseFloat(myCarConsumptionInput.value);
             if (!isNaN(myConsumption) && myConsumption > 0) {
                 localStorage.setItem('myCarConsumption', myConsumption);
                 myCarStatus.textContent = `Consumo de ${myConsumption} km/L salvo!`;
-                setTimeout(() => { myCarStatus.textContent = ''; }, 3000);
+                setTimeout(() => { if(myCarStatus) myCarStatus.textContent = ''; }, 3000);
             } else {
                 showErrorModal('Dado Inválido', 'Insira um valor de consumo válido para salvar.');
             }
@@ -168,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (savedConsumption) {
                 consumoInput.value = savedConsumption;
                 myCarStatus.textContent = `Consumo ${savedConsumption} km/L carregado!`;
-                setTimeout(() => { myCarStatus.textContent = ''; }, 3000);
+                setTimeout(() => { if(myCarStatus) myCarStatus.textContent = ''; }, 3000);
             } else {
                 showErrorModal('Meu Carro', 'Nenhum consumo salvo. Salve um primeiro.');
             }
@@ -217,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!hasDetailedOptions && !carData.isHybrid) consumptionOptionsDiv.innerHTML = '<p class="text-xs text-gray-500">Selecione um tipo de consumo.</p>';
         else if (!hasDetailedOptions && carData.isHybrid && fuel === 'gasolina' && carData.G_comb_hibrido === undefined) {
+            // Não mostra mensagem se já mostrou G_cid/G_est para híbrido
         } else if (!hasDetailedOptions && carData.isHybrid && !carData.G_comb_hibrido){
              consumptionOptionsDiv.innerHTML = '<p class="text-xs text-gray-500">Dados de consumo híbrido não disponíveis.</p>';
         }
@@ -305,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        const precoMedioBrasil = 5.75; // Exemplo
+                        const precoMedioBrasil = 5.75; 
                         precoCombustivelInput.value = precoMedioBrasil.toFixed(2);
                         precoLocalMsg.textContent = `Preço médio nacional (Brasil) sugerido: R$ ${precoMedioBrasil.toFixed(2)}. Ajuste se necessário.`;
                         precoLocalMsg.classList.remove('text-red-500');
@@ -331,21 +445,31 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-
-    if (fuelForm && distanciaInput && consumoInput && precoCombustivelInput && roundTripCheckbox && litrosNecessariosSpan && custoTotalSpan && resultadoDiv) {
+    
+    if (fuelForm && distanciaInput && consumoInput && precoCombustivelInput && roundTripCheckbox && litrosNecessariosSpan && custoTotalSpan && resultadoDiv && aiDistanceModeRadio) {
         fuelForm.addEventListener('submit', (event) => {
             event.preventDefault();
             let distanciaOriginal = parseFloat(distanciaInput.value);
-            let distanciaCalculo = distanciaOriginal;
+            let distanciaCalculo = distanciaOriginal; 
             const consumo = parseFloat(consumoInput.value);
             const preco = parseFloat(precoCombustivelInput.value);
+
+            if (aiDistanceModeRadio.checked && (isNaN(distanciaOriginal) || distanciaOriginal <= 0)) {
+                 showErrorModal('Distância Inválida', 'Calcule a distância com a IA ou mude para o modo manual e insira um valor antes de calcular o gasto.');
+                 distanciaInput.focus();
+                 return;
+            }
+            if (!aiDistanceModeRadio.checked && (isNaN(distanciaOriginal) || distanciaOriginal <= 0)) {
+                showErrorModal('Distância Inválida', 'Por favor, insira uma distância válida.');
+                distanciaInput.focus();
+                return;
+            }
+
 
             if (roundTripCheckbox.checked) {
                 distanciaCalculo *= 2;
             }
             
-            if (isNaN(distanciaOriginal) || distanciaOriginal <= 0) { showErrorModal('Dado Inválido', 'Por favor, insira uma distância válida.'); distanciaInput.focus(); return; }
             if (isNaN(consumo) || consumo <= 0) { showErrorModal('Dado Inválido', 'Insira um consumo válido.'); consumoInput.focus(); return; }
             if (isNaN(preco) || preco <= 0) { showErrorModal('Dado Inválido', 'Insira um preço de combustível válido.'); precoCombustivelInput.focus(); return; }
 
@@ -360,14 +484,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentSelectedFuelType === 'gasolina') fuelTypeLabelForHistory = "Gasolina";
             else if (currentSelectedFuelType === 'etanol') fuelTypeLabelForHistory = "Etanol";
             else if (currentSelectedFuelType === 'diesel') fuelTypeLabelForHistory = "Diesel";
-            else { // Tenta pegar do carro selecionado se for híbrido, como um fallback
+            else { 
                  const selectedCarDisplay = carSelect ? carSelect.value : "";
                  const carData = carDatabase.find(car => car.display === selectedCarDisplay);
                  if (carData && carData.isHybrid) {
                      fuelTypeLabelForHistory = "Híbrido (Gas.)";
                  }
             }
-
 
             calculationHistory.unshift({ 
                 distancia_original: distanciaOriginal,
@@ -382,11 +505,9 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('calculationHistory', JSON.stringify(calculationHistory));
             displayHistory();
 
-            if (window.innerWidth < 768) resultadoDiv.scrollIntoView({ behavior: 'smooth' });
+            if (window.innerWidth < 768 && resultadoDiv) resultadoDiv.scrollIntoView({ behavior: 'smooth' });
         });
-    } else {
-        console.error("Um ou mais elementos principais do formulário não foram encontrados ao tentar adicionar listener de submit.");
     }
     
-    displayHistory(); // Chamar uma vez para carregar o histórico inicial
+    displayHistory(); // Chamada final para garantir que o histórico seja exibido
 });
