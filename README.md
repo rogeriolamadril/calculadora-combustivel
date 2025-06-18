@@ -92,9 +92,10 @@ Coloque os três arquivos (index.html, style.css, script.js) na mesma pasta.
 Abra o arquivo index.html em um navegador como Chrome ou Firefox. Para testar enquanto desenvolve, a extensão "Live Server" do VS Code é uma boa pedida.
 
 c) Integrantes e Revisão do Trabalho
-Davi, Fernando, Rogério, Marcelo e Matheus - Responsáveis pela criação do codigo.
 
-Davi, Fernando, Rogério, Marcelo e Matheus - Responsáveis pela documentação.
+Alex, Cleiton, Davi, Fernando, Rogério, Marcelo e Matheus - Responsáveis pela criação do codigo.
+
+Alex, Cleiton, Davi, Fernando, Rogério, Marcelo e Matheus - Responsáveis pela documentação.
 
 
 Revisão: O trabalho foi revisado em equipe.
