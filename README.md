@@ -93,9 +93,9 @@ Abra o arquivo index.html em um navegador como Chrome ou Firefox. Para testar en
 
 c) Integrantes e Revisão do Trabalho
 
-Alex, Cleiton, Davi, Fernando, Rogério, Marcelo e Matheus - Responsáveis pela criação do codigo.
+Alex, Cleiton, Davi, Fernando, jonathan, Rogério, Marcelo e Matheus - Responsáveis pela criação do codigo.
 
-Alex, Cleiton, Davi, Fernando, Rogério, Marcelo e Matheus - Responsáveis pela documentação.
+Alex, Cleiton, Davi, Fernando, jonathan, Rogério, Marcelo e Matheus - Responsáveis pela documentação.
 
 
 Revisão: O trabalho foi revisado em equipe.
