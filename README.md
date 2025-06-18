@@ -92,13 +92,12 @@ Coloque os três arquivos (index.html, style.css, script.js) na mesma pasta.
 Abra o arquivo index.html em um navegador como Chrome ou Firefox. Para testar enquanto desenvolve, a extensão "Live Server" do VS Code é uma boa pedida.
 
 c) Integrantes e Revisão do Trabalho
-[Nome do Aluno(a) 1] - Responsável por [Etapa(s)]
+Fernando, Rogério e Marcelo - Responsáveis pela criação do codigo.
 
-[Nome do Aluno(a) 2] - Responsável por [Etapa(s)]
+Fernando, Rogério e Marcelo - Responsáveis pela documentação.
 
-(Adicionar mais integrantes conforme necessário)
 
-Revisão: O trabalho foi revisado em equipe, com destaque para a sugestão de [Nome do Aluno(a)] de separar a lógica em funções menores para melhorar a organização do script.js.
+Revisão: O trabalho foi revisado em equipe.
 
 6. Depuração de um Problema (Debugging)
 a) O Erro que Encontramos
